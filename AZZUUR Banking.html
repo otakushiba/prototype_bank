@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AZZUUR — Multi-Currency Banking</title>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #1a1a2e;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, 'SF Pro Display', BlinkMacSystemFont, sans-serif;
+  }
+
+  /* App shell */
+  .app {
+    width: 100%;
+    height: 100%;
+    background: #f5f5f7;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    padding-top: 62px; /* clear iOS status bar (absolute-positioned, ~62px tall) */
+  }
+
+  /* Scrollable content area */
+  .screen-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .screen-scroll::-webkit-scrollbar { display: none; }
+
+  /* Status bar text */
+  .status-time { font-weight: 600; font-size: 15px; color: #000; }
+
+  /* === HOME SCREEN === */
+  .home-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px 8px;
+    background: #fff;
+  }
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: #1a1a2e;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 15px;
+  }
+  .header-icons { display: flex; gap: 14px; align-items: center; }
+  .icon-btn {
+    background: none; border: none; cursor: pointer;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    transition: background 0.15s;
+  }
+  .icon-btn:active { background: #f0f0f0; }
+  .icon-btn.plus {
+    background: #1a1a2e;
+    color: #fff;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px 10px;
+  }
+  .section-title { font-size: 15px; font-weight: 700; color: #111; }
+  .manage-link { font-size: 13px; color: #888; cursor: pointer; }
+
+  /* Account cards scroll row */
+  .cards-row {
+    display: flex;
+    gap: 10px;
+    padding: 0 20px 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex-wrap: nowrap;
+  }
+  .cards-row::-webkit-scrollbar { display: none; }
+
+  .account-card {
+    flex: 0 0 110px;
+    background: #fff;
+    border-radius: 14px;
+    padding: 12px 12px 10px;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    border: 1.5px solid transparent;
+    transition: border-color 0.15s, transform 0.1s;
+    user-select: none;
+  }
+  .account-card:active { transform: scale(0.97); border-color: #f0a500; }
+  .account-card.add-card {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: #f5f5f7;
+    border: 1.5px dashed #ccc;
+    color: #aaa;
+    font-size: 12px; gap: 4px;
+    cursor: default;
+  }
+  .card-flag { margin-bottom: 4px; display: flex; }
+  .card-currency { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 2px; }
+  .card-balance { font-size: 16px; font-weight: 700; color: #111; }
+
+  /* Dots indicator */
+  .dots-row {
+    display: flex; gap: 4px;
+    justify-content: center;
+    padding: 8px 0 4px;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #ccc; }
+  .dot.active { background: #1a1a2e; }
+
+  /* Live rate strip */
+  .live-rate {
+    padding: 6px 20px 10px;
+    font-size: 12px; color: #555;
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer;
+  }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+
+  /* Quick actions */
+  .actions-row {
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 16px 16px;
+    background: #fff;
+    margin: 0 0 10px;
+  }
+  .action-item {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 6px;
+    cursor: pointer;
+  }
+  .action-circle {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: #f0f0f5;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .action-circle:active { background: #e0e0ea; }
+  .action-circle.highlight { background: #f0a500; }
+  .action-circle.highlight:active { background: #d99400; }
+  .action-label { font-size: 11px; color: #444; font-weight: 500; }
+
+  /* History */
+  .history-section { padding: 0 20px 80px; }
+  .history-title { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 10px; }
+  .history-group {
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+  .history-date {
+    font-size: 11px; color: #999; font-weight: 500;
+    padding: 10px 14px 6px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .tx-row {
+    display: flex; align-items: center;
+    padding: 12px 14px;
+    gap: 12px;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  .tx-row:last-child { border-bottom: none; }
+  .tx-icon {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: #f0f0f5;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 16px;
+  }
+  .tx-info { flex: 1; min-width: 0; }
+  .tx-name { font-size: 13px; font-weight: 600; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-time { font-size: 11px; color: #999; margin-top: 2px; }
+  .tx-amount { font-size: 13px; font-weight: 600; text-align: right; white-space: nowrap; }
+  .tx-amount.positive { color: #22c55e; }
+  .tx-amount.negative { color: #111; }
+  .tx-badge {
+    background: #1a1a2e; color: #fff;
+    border-radius: 20px; padding: 3px 8px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+  }
+  .tx-badge.green { background: #1a1a2e; }
+
+  /* === ACCOUNT SCREEN === */
+  .account-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: #fff;
+  }
+  .back-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #f0f0f5;
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    transition: background 0.15s;
+  }
+  .back-btn:active { background: #e0e0ea; }
+  .account-header-title { font-size: 16px; font-weight: 700; color: #111; }
+
+  .balance-section {
+    background: #fff;
+    padding: 16px 20px 20px;
+    text-align: center;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .balance-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+  .balance-currency-row {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    margin-bottom: 4px;
+  }
+  .balance-flag { display: flex; align-items: center; }
+  .balance-code { font-size: 14px; font-weight: 600; color: #555; }
+  .balance-amount { font-size: 40px; font-weight: 800; color: #111; letter-spacing: -1px; margin-bottom: 12px; }
+
+  .iban-row {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #f5f5f7; border-radius: 20px;
+    padding: 6px 12px; cursor: pointer;
+    font-size: 11px; color: #555;
+    transition: background 0.15s;
+  }
+  .iban-row:active { background: #eaeaf0; }
+
+  .account-actions {
+    display: flex;
+    justify-content: space-around;
+    padding: 16px 16px 12px;
+    background: #fff;
+    margin-bottom: 10px;
+  }
+
+  /* Convert screen */
+  .convert-screen {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 32px;
+    text-align: center;
+    color: #888;
+    gap: 12px;
+  }
+  .convert-icon { font-size: 48px; margin-bottom: 8px; }
+  .convert-title { font-size: 18px; font-weight: 700; color: #111; }
+  .convert-sub { font-size: 13px; line-height: 1.5; }
+
+  /* Bottom nav */
+  .bottom-nav {
+    display: flex;
+    background: #fff;
+    border-top: 1px solid #eee;
+    padding: 8px 0 36px; /* 36px bottom = safe area for iOS home indicator */
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
+  }
+  .nav-item {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 3px;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .nav-label { font-size: 10px; color: #aaa; font-weight: 500; }
+  .nav-label.active { color: #1a1a2e; }
+  .nav-icon { font-size: 18px; }
+
+  /* Pending badge */
+  .pending-badge {
+    font-size: 10px; color: #f0a500; font-weight: 600;
+    margin-top: 2px;
+  }
+
+  /* Tweaks panel */
+  .tweaks-panel {
+    position: fixed; bottom: 20px; right: 20px;
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    padding: 16px; width: 200px;
+    z-index: 9999; display: none;
+    font-family: -apple-system, sans-serif;
+  }
+  .tweaks-panel.visible { display: block; }
+  .tweaks-title { font-size: 13px; font-weight: 700; color: #111; margin-bottom: 12px; }
+  .tweak-row { margin-bottom: 12px; }
+  .tweak-label { font-size: 11px; color: #666; margin-bottom: 4px; }
+  .tweak-row select, .tweak-row input[type=range] {
+    width: 100%; font-size: 12px; border-radius: 6px;
+    border: 1px solid #e0e0e0; padding: 4px 6px;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+
+
+
+
+
+const { useState, useRef } = React;
+
+// ── Icons (SVG inline) ──────────────────────────────────────────────────────
+const IC = {
+  search: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>,
+  bell: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>,
+  plus: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>,
+  send: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>,
+  request: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>,
+  convert: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></svg>,
+  loans: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /></svg>,
+  details: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>,
+  back: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>,
+  chevron: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>,
+  card: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>,
+  pay: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 8 12 12 14 14" /></svg>,
+  home: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>,
+  gear: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>,
+  iban: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>,
+  convert_arrow: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round"><polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></svg>
+};
+
+// ── Data ────────────────────────────────────────────────────────────────────
+const ACCOUNTS = [
+{ id: 'gbp', flag: 'gb', code: 'GBP', symbol: '£', balance: '1,234.56', title: 'Main Account',
+  iban: 'GB 91BKE N1000 0041 6100 08', fullIban: 'GB 91BKEN 1000 0041 6100 08' },
+{ id: 'eur', flag: 'eu', code: 'EUR', symbol: '€', balance: '1,234.56', title: 'EUR Account',
+  iban: 'DE 89 3704 0044 0532 0130 00', fullIban: 'DE 89 3704 0044 0532 0130 00' },
+{ id: 'usd', flag: 'us', code: 'USD', symbol: '$', balance: '345', title: 'USD Account',
+  iban: '021000021 3947201856', fullIban: '021000021 3947201856' }];
+
+
+const HOME_TXS = [
+{ date: 'Tuesday, Feb 13', txs: [
+  { arrow: 'convert', flags: ['eu','gb'], name: 'EUR to GBP conver…', time: '14:20', amount: '−€500 / +£423', badge: null, type: 'convert' },
+  { arrow: 'out',     flags: ['gb'],      name: 'James Green',       time: '14:20', amount: '−100,00 GBP',  badge: null, type: 'out' },
+  { arrow: 'in',      flags: ['eu'],      name: 'Anna W.',           time: '14:20', amount: null,           badge: '+50.00 EUR', type: 'in' },
+]},
+{ date: 'Saturday, Feb 10', txs: [
+  { arrow: 'out',     flags: ['gb'],      name: 'Hannes & Co.',      time: '14:20', amount: '−10,00 GBP',   badge: null, type: 'out' },
+]},
+];
+
+
+const GBP_TXS = [
+{ date: 'Tuesday, Feb 13', txs: [
+  { icon: '⇄', name: 'EUR to GBP conversion', time: '14:20', amount: null, badge: '+423 GBP', type: 'in' },
+  { icon: '🏢', name: 'Hannes & Co.', time: '14:20', amount: '−30.00 GBP', badge: null, type: 'out' }]
+},
+{ date: 'Saturday, Feb 10', txs: [
+  { icon: '👤', name: 'Anna W.', time: '14:20', amount: null, badge: '+100.00 GBP', type: 'in' }]
+}];
+
+
+const USD_TXS = [
+{ date: 'Tuesday, Feb 13', txs: [
+  { icon: '☕', name: 'Starbucks', time: '14:20', amount: '−250.00 USD', badge: null, type: 'out', pending: true }]
+}];
+
+
+const EUR_TXS = [];
+
+const ACCOUNT_TXS = { gbp: GBP_TXS, usd: USD_TXS, eur: EUR_TXS };
+const LIVE_RATES = {
+  gbp: null,
+  usd: { label: '● Live rate: 1 USD = 1.267 GBP', link: true },
+  eur: { label: '● Live rate: 1 EUR = 0.845 GBP', link: false }
+};
+
+// ── Components ──────────────────────────────────────────────────────────────
+function BottomNav({ active, onHome }) {
+  const items = [
+  { id: 'home', label: 'Home', icon: IC.home },
+  { id: 'cards', label: 'Cards', icon: IC.card },
+  { id: 'payments', label: 'Payments', icon: IC.pay },
+  { id: 'loans', label: 'Loans', icon: IC.loans },
+  { id: 'settings', label: 'Settings', icon: IC.gear }];
+
+  return (
+    <div className="bottom-nav">
+      {items.map((item) =>
+      <div key={item.id} className="nav-item" onClick={item.id === 'home' ? onHome : undefined}>
+          <span className="nav-icon" style={{ color: item.id === active ? '#1a1a2e' : '#aaa' }}>
+            {item.icon}
+          </span>
+          <span className={`nav-label ${item.id === active ? 'active' : ''}`}>{item.label}</span>
+        </div>
+      )}
+    </div>);
+
+}
+
+// Flag image component
+function Flag({ code, size = 20, radius = 3 }) {
+  return (
+    <img
+      src={`https://flagcdn.com/w40/${code}.png`}
+      alt={code}
+      style={{ width: size, height: size, objectFit: 'cover', borderRadius: '50%', display: 'block', flexShrink: 0 }}
+    />
+  );
+}
+
+// Arrow icon for home tx rows
+function ArrowIcon({ type }) {
+  const color = '#555';
+  if (type === 'convert') return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round">
+      <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+      <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+    </svg>
+  );
+  if (type === 'in') return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round">
+      <line x1="17" y1="7" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/>
+    </svg>
+  );
+  // out
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round">
+      <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
+    </svg>
+  );
+}
+
+function HomeTxList({ groups }) {
+  if (!groups || groups.length === 0) return null;
+  return groups.map((group, gi) => (
+    <div key={gi} className="history-group">
+      <div className="history-date">{group.date}</div>
+      {group.txs.map((tx, ti) => (
+        <div key={ti} className="tx-row">
+          {/* Icon with flag badge */}
+          <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%',
+              background: '#f0f0f5',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <ArrowIcon type={tx.arrow} />
+            </div>
+            {/* Flag badge bottom-left */}
+            <div style={{
+              position: 'absolute', bottom: -2, left: -2,
+              display: 'flex', gap: 1,
+              background: '#fff', borderRadius: 4, padding: '1px 2px',
+              boxShadow: '0 0 0 1px rgba(0,0,0,0.06)',
+            }}>
+              {tx.flags.map(f => <Flag key={f} code={f} size={13} radius={2} />)}
+            </div>
+          </div>
+          <div className="tx-info">
+            <div className="tx-name">{tx.name}</div>
+            <div className="tx-time">{tx.time}</div>
+          </div>
+          {tx.badge
+            ? <div className="tx-badge">{tx.badge}</div>
+            : <div className="tx-amount negative">{tx.amount}</div>
+          }
+        </div>
+      ))}
+    </div>
+  ));
+}
+
+function TxList({ groups }) {
+  if (!groups || groups.length === 0) {
+    return <div style={{ color: '#bbb', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>No transactions yet</div>;
+  }
+  return groups.map((group, gi) =>
+  <div key={gi} className="history-group">
+      <div className="history-date">{group.date}</div>
+      {group.txs.map((tx, ti) =>
+    <div key={ti} className="tx-row">
+          <div className="tx-icon" style={{ fontSize: tx.icon.length > 2 ? 14 : 18 }}>{tx.icon}</div>
+          <div className="tx-info">
+            <div className="tx-name">{tx.name}</div>
+            {tx.pending && <div className="pending-badge">Pending</div>}
+            <div className="tx-time">{tx.time}</div>
+          </div>
+          {tx.badge ?
+      <div className="tx-badge">{tx.badge}</div> :
+      <div className={`tx-amount ${tx.type === 'in' ? 'positive' : 'negative'}`}>{tx.amount}</div>
+      }
+        </div>
+    )}
+    </div>
+  );
+}
+
+function ActionRow({ onConvert, extraItem }) {
+  const base = [
+  { label: 'Send', icon: IC.send, highlight: false, onClick: null },
+  { label: extraItem || 'Request', icon: extraItem ? IC.loans : IC.request, highlight: false, onClick: null },
+  { label: 'Convert', icon: IC.convert, highlight: true, onClick: onConvert },
+  { label: extraItem ? 'Details' : 'Loans', icon: extraItem ? IC.details : IC.loans, highlight: false, onClick: null }];
+
+  return (
+    <div className={extraItem ? 'account-actions' : 'actions-row'} style={{ height: "100px", padding: "16px", backgroundColor: "rgb(245, 243, 245)" }}>
+      {base.map((a, i) =>
+      <div key={i} className="action-item" onClick={a.onClick}>
+          <div className={`action-circle ${a.highlight ? 'highlight' : ''}`}>
+            <span style={{ color: a.highlight ? '#fff' : '#444' }}>{a.icon}</span>
+          </div>
+          <span className="action-label">{a.label}</span>
+        </div>
+      )}
+    </div>);
+
+}
+
+// ── Screens ─────────────────────────────────────────────────────────────────
+function HomeScreen({ onAccount, onConvert }) {
+  const [activeDot, setActiveDot] = useState(0);
+  const cardsRowRef = useRef(null);
+
+  const handleCardsScroll = () => {
+    const el = cardsRowRef.current;
+    if (!el) return;
+    const cardWidth = 110 + 10; // card width + gap
+    const idx = Math.round(el.scrollLeft / cardWidth);
+    setActiveDot(Math.min(idx, 3));
+  };
+
+  return (
+    <div className="app">
+      <div className="screen-scroll">
+        {/* Header */}
+        <div className="home-header" style={{ backgroundColor: "rgba(255, 255, 255, 0)" }}>
+          <div className="avatar">A</div>
+          <div className="header-icons">
+            <button className="icon-btn">{IC.search}</button>
+            <button className="icon-btn">{IC.bell}</button>
+            <button className="icon-btn plus">{IC.plus}</button>
+          </div>
+        </div>
+
+        {/* My accounts */}
+        <div className="section-header">
+          <span className="section-title">My accounts</span>
+          <span className="manage-link">Manage</span>
+        </div>
+
+        <div className="cards-row" ref={cardsRowRef} onScroll={handleCardsScroll}>
+          {ACCOUNTS.map((acc) =>
+          <div key={acc.id} className="account-card" onClick={() => onAccount(acc.id)}>
+              <div className="card-flag"><Flag code={acc.flag} size={24} /></div>
+              <div className="card-currency">{acc.code}</div>
+              <div className="card-balance">{acc.symbol}{acc.balance}</div>
+            </div>
+          )}
+          <div className="account-card add-card">
+            <span style={{ fontSize: 22 }}>＋</span>
+            <span>Add account</span>
+          </div>
+        </div>
+
+        <div className="dots-row">
+          {[0, 1, 2, 3].map((i) => <div key={i} className={`dot ${i === activeDot ? 'active' : ''}`} />)}
+        </div>
+
+        <div className="live-rate">
+          <div className="live-dot" />
+          <span>Live rate: 1 GBP = 1.3 EUR / 1.267 USD</span>
+        </div>
+
+        {/* Actions */}
+        <ActionRow onConvert={onConvert} extraItem={null} />
+
+        {/* History */}
+        <div className="history-section">
+          <div className="history-title">History</div>
+          <HomeTxList groups={HOME_TXS} />
+        </div>
+      </div>
+
+      <BottomNav active="home" onHome={() => {}} />
+    </div>);
+
+}
+
+function AccountScreen({ accountId, onBack, onConvert }) {
+  const acc = ACCOUNTS.find((a) => a.id === accountId);
+  const txs = ACCOUNT_TXS[accountId] || [];
+  const rate = LIVE_RATES[accountId];
+
+  return (
+    <div className="app">
+      <div className="screen-scroll">
+        {/* Header */}
+        <div className="account-header" style={{ backgroundColor: "rgb(245, 243, 245)" }}>
+          <button className="back-btn" onClick={onBack}>{IC.back}</button>
+          <div className="account-header-title">{acc.title}</div>
+          <button className="icon-btn" style={{ color: '#e55' }}>{IC.bell}</button>
+        </div>
+
+        {/* Balance */}
+        <div className="balance-section" style={{ backgroundColor: "rgb(245, 243, 245)" }}>
+          <div className="balance-label">Current balance</div>
+          <div className="balance-currency-row">
+            <span className="balance-flag"><Flag code={acc.flag} size={22} /></span>
+            <span className="balance-code">{acc.code}</span>
+          </div>
+          <div className="balance-amount">{acc.symbol}{acc.balance}</div>
+          <div className="iban-row">
+            {IC.iban}
+            <span>{acc.iban}</span>
+            {IC.chevron}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <ActionRow onConvert={onConvert} extraItem="Loans" />
+
+        {/* Live rate strip for USD/EUR */}
+        {rate &&
+        <div
+          className="live-rate"
+          style={{
+            background: '#fff', margin: '0 0 10px', padding: '10px 16px',
+            cursor: rate.link ? 'pointer' : 'default',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+          }}
+          onClick={rate.link ? onConvert : undefined}>
+          
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="live-dot" style={{ background: '#bbb' }} />
+              <span>{rate.label.replace('● ', '')}</span>
+            </span>
+            {rate.link && IC.chevron}
+          </div>
+        }
+
+        {/* History */}
+        <div className="history-section" style={{ paddingTop: 6 }}>
+          <div className="history-title">History</div>
+          <TxList groups={txs} />
+        </div>
+      </div>
+
+      <BottomNav active="home" onHome={onBack} />
+    </div>);
+
+}
+
+function ConvertScreen({ onBack }) {
+  return (
+    <div className="app">
+      <div className="account-header" style={{ opacity: "1", backgroundColor: "rgba(255, 255, 255, 0)" }}>
+        <button className="back-btn" onClick={onBack}>{IC.back}</button>
+        <div className="account-header-title">Convert</div>
+        <div style={{ width: 32 }} />
+      </div>
+      <div className="convert-screen">
+        <div className="convert-icon">⇄</div>
+        <div className="convert-title">Convert Currency</div>
+        <div className="convert-sub">Flow not in scope —<br />entry point placement demonstrated.</div>
+      </div>
+      <BottomNav active="home" onHome={onBack} />
+    </div>);
+
+}
+
+// ── Root ─────────────────────────────────────────────────────────────────────
+function App() {
+  const saved = (() => {try {return JSON.parse(localStorage.getItem('azzuur_screen') || 'null');} catch {return null;}})();
+  const [screen, setScreen] = useState(saved || { name: 'home' });
+  const [tweaksVisible, setTweaksVisible] = useState(false);
+  const [accent, setAccent] = useState('#f0a500');
+  const [cardSize, setCardSize] = useState(110);
+
+  const go = (s) => {setScreen(s);localStorage.setItem('azzuur_screen', JSON.stringify(s));};
+
+  // Tweaks messaging
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (e.data?.type === '__activate_edit_mode') setTweaksVisible(true);
+      if (e.data?.type === '__deactivate_edit_mode') setTweaksVisible(false);
+    };
+    window.addEventListener('message', handler);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  const applyAccent = (color) => {
+    setAccent(color);
+    document.documentElement.style.setProperty('--accent', color);
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { accentColor: color } }, '*');
+  };
+
+  // Inject CSS var
+  React.useEffect(() => {
+    const s = document.createElement('style');
+    s.id = 'accent-override';
+    document.head.appendChild(s);
+    return () => s.remove();
+  }, []);
+  React.useEffect(() => {
+    const s = document.getElementById('accent-override');
+    if (s) s.textContent = `.action-circle.highlight { background: ${accent} !important; }`;
+  }, [accent]);
+
+  const renderScreen = () => {
+    if (screen.name === 'account') return <AccountScreen accountId={screen.id} onBack={() => go({ name: 'home' })} onConvert={() => go({ name: 'convert' })} />;
+    if (screen.name === 'convert') return <ConvertScreen onBack={() => go({ name: screen.from || 'home' })} />;
+    return <HomeScreen onAccount={(id) => go({ name: 'account', id })} onConvert={() => go({ name: 'convert', from: 'home' })} />;
+  };
+
+  return (
+    <>
+      <IOSDevice>
+        <style>{`.account-card { flex: 0 0 ${cardSize}px !important; }`}</style>
+        {renderScreen()}
+      </IOSDevice>
+
+      <div className={`tweaks-panel ${tweaksVisible ? 'visible' : ''}`}>
+        <div className="tweaks-title">Tweaks</div>
+        <div className="tweak-row">
+          <div className="tweak-label">Accent color</div>
+          <select value={accent} onChange={(e) => applyAccent(e.target.value)}>
+            <option value="#f0a500">Gold (default)</option>
+            <option value="#2563eb">Blue</option>
+            <option value="#16a34a">Green</option>
+            <option value="#dc2626">Red</option>
+            <option value="#7c3aed">Purple</option>
+          </select>
+        </div>
+        <div className="tweak-row">
+          <div className="tweak-label">Card width: {cardSize}px</div>
+          <input type="range" min="90" max="140" value={cardSize}
+          onChange={(e) => setCardSize(Number(e.target.value))} />
+        </div>
+      </div>
+    </>);
+
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
